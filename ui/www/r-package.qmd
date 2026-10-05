@@ -1,0 +1,132 @@
+---
+title: "The R package"
+---
+
+```{r}
+#| echo: false
+desc <- read.dcf("../../DESCRIPTION")
+pkg <- desc[1, "Package"]
+ver <- desc[1, "Version"]
+repo_url <- sub(",.*$", "", desc[1, "URL"])
+```
+
+`r sprintf("**%s** (v%s)", pkg, ver)` is the computational core of this
+dissertation: the methodological R code, its tests, and the Quarto + XeLaTeX
+thesis build live together in one package, developed and versioned
+independently of the dissertation's web application.
+
+## Installation
+
+```{r}
+#| echo: false
+#| results: asis
+cat(sprintf("```r\n# install.packages(\"remotes\")\nremotes::install_github(\"%s\")\n```\n",
+            sub("^https://github.com/", "", grep("github.com", strsplit(desc[1, "URL"], ",\\s*")[[1]], value = TRUE)[1])))
+```
+
+Source, issues, and CI live on [GitHub](`r sub("^https://github.com/", "https://github.com/", grep("github.com", strsplit(desc[1, "URL"], ",\\s*")[[1]], value = TRUE)[1])`).
+
+## Function reference
+
+Rendered from the package's roxygen documentation (`man/`) at publish time —
+this page cannot drift from the code. Topics are grouped by concept (roxygen
+`@family` tags); ungrouped topics fall back to an alphabetical section, so
+this page stays correct for any package.
+
+```{r}
+#| echo: false
+#| results: asis
+db <- tools::Rd_db(dir = "../..")
+
+topic_concept <- function(rd) {
+  con <- unlist(tools:::.Rd_get_metadata(rd, "concept"))
+  if (length(con) == 0) NA_character_ else con[[1]]
+}
+concepts <- vapply(db, topic_concept, character(1))
+
+# Rd2HTML fragments carry their own <h3> section headings (Title, Usage,
+# Arguments, ...) and render arguments as layout tables. Injected raw under an
+# h4 function heading, a function's sections outranked the function itself and
+# the heading list became "Title, Name, Usage, ..." repeated per topic
+# (WCAG 1.3.1 / 2.4.10, wi-20260905-at-rd-reference-structure). Restructure the
+# parsed fragment -- no regex over R's HTML:
+#   - Title becomes a lead sentence and Name is dropped (the h4 already says it);
+#   - remaining sections become h5, each carrying the function name for screen
+#     readers, so heading navigation says which function a section belongs to;
+#   - argument/value layout tables become description lists (name -> meaning);
+#   - argument anchor ids are namespaced per topic (they repeat across topics).
+restructure_rd <- function(html, topic) {
+  doc <- xml2::read_html(paste0("<div class=\"rd-topic\">", html, "</div>"))
+  root <- xml2::xml_find_first(doc, "//div[@class='rd-topic']")
+
+  for (h in xml2::xml_find_all(root, "./h3")) {
+    label <- trimws(xml2::xml_text(h))
+    if (label == "Name") {
+      # The Name section is a bare text node naming the topic -- redundant.
+      nxt <- xml2::xml_find_first(h, "following-sibling::node()[normalize-space()][1]")
+      if (inherits(nxt, "xml_node") && xml2::xml_type(nxt) == "text") xml2::xml_remove(nxt)
+      xml2::xml_remove(h)
+    } else if (label == "Title") {
+      lead <- xml2::xml_find_first(h, "following-sibling::p[1]")
+      if (inherits(lead, "xml_node")) xml2::xml_set_attr(lead, "class", "rd-title lead")
+      xml2::xml_remove(h)
+    } else {
+      xml2::xml_name(h) <- "h5"
+      xml2::xml_set_text(h, "")
+      prefix <- xml2::xml_add_child(h, "span", paste0(topic, ": "))
+      xml2::xml_set_attr(prefix, "class", "visually-hidden")
+      xml2::xml_add_child(h, "span", label)
+    }
+  }
+
+  for (tbl in xml2::xml_find_all(root, ".//table[@role='presentation']")) {
+    rows <- xml2::xml_find_all(tbl, ".//tr")
+    cells <- lapply(rows, function(tr) xml2::xml_find_all(tr, "./td"))
+    if (length(rows) == 0 || !all(lengths(cells) == 2)) next
+    dl <- xml2::xml_add_sibling(tbl, "dl", .where = "before")
+    xml2::xml_set_attr(dl, "class", "rd-arguments")
+    for (pair in cells) {
+      dt <- xml2::xml_add_child(dl, "dt")
+      for (child in xml2::xml_contents(pair[[1]])) xml2::xml_add_child(dt, child)
+      dd <- xml2::xml_add_child(dl, "dd")
+      for (child in xml2::xml_contents(pair[[2]])) xml2::xml_add_child(dd, child)
+    }
+    xml2::xml_remove(tbl)
+  }
+
+  for (el in xml2::xml_find_all(root, ".//code[@id]")) {
+    xml2::xml_set_attr(el, "id", paste0(topic, "-arg-", xml2::xml_attr(el, "id")))
+  }
+
+  paste(vapply(xml2::xml_contents(root), as.character, character(1)), collapse = "")
+}
+
+emit_topic <- function(nm) {
+  tf <- tempfile(fileext = ".html")
+  tools::Rd2HTML(db[[nm]], out = tf, fragment = TRUE)
+  html <- paste(readLines(tf, warn = FALSE), collapse = "\n")
+  topic <- sub("\\.Rd$", "", nm)
+  cat(sprintf("#### `%s`\n\n", topic))
+  cat("```{=html}\n<div class=\"rd-topic\">\n", restructure_rd(html, topic), "\n</div>\n```\n\n", sep = "")
+}
+
+group_order <- c("simulation", "model fitting", "evaluation", "model results")
+group_intro <- c(
+  simulation = "Seeded, provenance-carrying data generators.",
+  `model fitting` = "The model ladder's fitting engines -- conventional baselines, the IRTc product-copula wrapper, and one-factor copulas.",
+  evaluation = "Held-out prediction at fixed parameters (the benchmark primary metric).",
+  `model results` = "The standardized model-result schema every fit flows through."
+)
+groups <- unique(c(intersect(group_order, concepts), setdiff(sort(unique(na.omit(concepts))), group_order)))
+
+for (g in groups) {
+  cat(sprintf("### %s\n\n", tools::toTitleCase(g)))
+  if (!is.na(group_intro[g])) cat(group_intro[[g]], "\n\n")
+  for (nm in sort(names(db)[!is.na(concepts) & concepts == g])) emit_topic(nm)
+}
+ungrouped <- sort(names(db)[is.na(concepts)])
+if (length(ungrouped) > 0) {
+  cat("### Other topics\n\n")
+  for (nm in ungrouped) emit_topic(nm)
+}
+```

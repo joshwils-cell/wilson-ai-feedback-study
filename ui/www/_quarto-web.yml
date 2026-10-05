@@ -1,0 +1,29 @@
+# Web-profile overlay (quarto render --profile web): adds the package
+# reference as an HTML-only appendix. The PDF render (build-thesis.yml)
+# runs without a profile, so the thesis PDF never contains this page.
+book:
+  appendices:
+    - r-package.qmd
+
+# Neutral identity for the published HTML (tokens-neutral-sibling ADR):
+# Level-3 property -- Noto Sans, ink/stone/paper, no dataimago house look.
+# The PDF render (no profile) is untouched.
+# Accessible names for Quarto's icon-only search controls. The submit
+# button's title also becomes the search field's label, so the stock
+# "Submit" made a screen reader call the text field "Submit"
+# (wi-20260905-at-unnamed-search-buttons). a11y-fixups.html mirrors these
+# titles, and the colour toggle's, into aria-label.
+language:
+  search-submit-button-title: "Search"
+  search-clear-button-title: "Clear search"
+
+format:
+  html:
+    theme:
+      light: assets/neutral-light.scss
+      dark: assets/neutral-dark.scss
+    # Accessibility layer for Quarto's generated chrome -- see the comments in
+    # each file (wi-20260905-at-skip-link, wi-20260905-at-landmark-roles).
+    # HTML-only by construction: this overlay never reaches the PDF render.
+    include-before-body: assets/a11y-skip-link.html
+    include-after-body: assets/a11y-fixups.html

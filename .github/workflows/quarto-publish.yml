@@ -1,0 +1,121 @@
+name: Publish Quarto Site
+
+# Publishes the ui/www Quarto book (HTML, web profile) + the committed
+# thesis PDF to GitHub Pages via the artifact flow -- nothing is committed,
+# so this never races build-thesis.yml's commit-back loop. The workflow_run
+# trigger republishes the site after each PDF rebuild (the bot's skip-ci
+# commit suppresses push events but not workflow_run).
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'ui/www/**'
+      - 'R/**'
+      - 'man/**'
+      - 'DESCRIPTION'
+      - '.github/workflows/quarto-publish.yml'
+  workflow_run:
+    workflows: ["Build thesis PDF"]
+    types: [completed]
+  workflow_dispatch:
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  # A provisioned repo's FIRST commit is the raw template copy: DESCRIPTION
+  # still holds `{{...}}` placeholders until the hub's substitution commit
+  # lands seconds later. Running on that commit fails ("Malformed package
+  # name") and its PDF commit races the real one, leaving red marks on a
+  # brand-new repo. Skip it; the substitution commit runs everything.
+  guard:
+    if: github.repository != 'dataimago/dissertation-rpkg-template'
+    runs-on: ubuntu-latest
+    outputs:
+      ready: ${{ steps.check.outputs.ready }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          sparse-checkout: DESCRIPTION
+          sparse-checkout-cone-mode: false
+      - id: check
+        run: |
+          if grep -q '{{' DESCRIPTION; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Template placeholders not filled in yet (provisioning in progress); skipping this run."
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  build-site:
+    needs: guard
+    # Never run in the template repo itself.
+    if: >-
+      needs.guard.outputs.ready == 'true' &&
+      (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Setup Quarto
+        uses: quarto-dev/quarto-actions/setup@v2
+
+      - name: Setup R
+        uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: 'release'
+          use-public-rspm: true
+
+      # The package-reference page renders man/*.Rd straight from the
+      # source tree (tools::Rd_db(dir=)) -- no package installation and no
+      # Suggests needed; knitr/rmarkdown power the executable chunk and xml2
+      # restructures the Rd2HTML fragments (headings, argument lists).
+      - name: Install chunk dependencies
+        run: Rscript -e 'install.packages(c("knitr", "rmarkdown", "xml2"))'
+
+      - name: Render site (web profile)
+        run: |
+          cd ui/www
+          quarto render --to html --profile web
+
+      - name: Restore committed thesis PDF into the site
+        # The very first publish can run before build-thesis has committed a
+        # PDF; publish the site without it rather than fail (it re-runs when
+        # the PDF lands, via workflow_run).
+        run: |
+          if git cat-file -e HEAD:docs/thesis.pdf 2>/dev/null; then
+            git checkout -- docs/thesis.pdf
+          else
+            echo "::notice::No committed thesis PDF yet; publishing the site without it."
+          fi
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+
+  deploy:
+    needs: build-site
+    if: github.repository != 'dataimago/dissertation-rpkg-template'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Enable and configure GitHub Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
