@@ -1,10 +1,10 @@
-# {{rPackage.name}}
+# wilson-ai-feedback-study
 
-> R package supporting {{user.name}}'s dissertation, "{{thesis.workingTitle}}", provisioned via [dissertation.ai](https://dissertation-ai.dataimago.ai).
+> R package supporting Joshua Wilson, Ph.D.'s dissertation, "From AI Feedback to Independent Writing: Evaluating a Revision and Goal-Setting Routine in Middle School", provisioned via [dissertation.ai](https://dissertation-ai.dataimago.ai).
 
-**📖 Website:** [{{user.githubUsername}}.github.io/{{rPackage.name}}](https://{{user.githubUsername}}.github.io/{{rPackage.name}}/) — the thesis as an HTML book, the latest thesis PDF, and the R package reference rendered from the roxygen docs. Published by `quarto-publish.yml` on every push (a maintainer or the provisioning flow must enable GitHub Pages, build type "GitHub Actions", once).
+**📖 Website:** [joshwils-cell.github.io/wilson-ai-feedback-study](https://joshwils-cell.github.io/wilson-ai-feedback-study/) — the thesis as an HTML book, the latest thesis PDF, and the R package reference rendered from the roxygen docs. Published by `quarto-publish.yml` on every push (a maintainer or the provisioning flow must enable GitHub Pages, build type "GitHub Actions", once).
 
-This package is the **R-package half** of a two-repo dissertation environment. The NextJS app half lives at [`github.com/{{user.githubUsername}}/{{metadata.name}}`](https://github.com/{{user.githubUsername}}/{{metadata.name}}) and includes this package as a Git submodule at `packages/r-packages/{{rPackage.name}}/`.
+This package is the **R-package half** of a two-repo dissertation environment. The NextJS app half lives at [`github.com/joshwils-cell/joshwils-cell-dissertation`](https://github.com/joshwils-cell/joshwils-cell-dissertation) and includes this package as a Git submodule at `packages/r-packages/wilson-ai-feedback-study/`.
 
 ## What's in this repo
 
@@ -24,8 +24,8 @@ This package is the **R-package half** of a two-repo dissertation environment. T
 ## Quick start
 
 ```sh
-git clone https://github.com/{{user.githubUsername}}/{{rPackage.name}}.git
-cd {{rPackage.name}}
+git clone https://github.com/joshwils-cell/wilson-ai-feedback-study.git
+cd wilson-ai-feedback-study
 
 # Edit chapter content in ui/www/chapters/*.qmd
 # (or open this repo in your AI-enabled editor)
@@ -48,7 +48,7 @@ cd ui/www && quarto preview
 
 ## The two-repo relationship
 
-This R package + the dissertation app at `github.com/{{user.githubUsername}}/{{metadata.name}}` are designed to be edited together. Most users clone the app repo with `--recursive` to get both at once. Changes to thesis content + R code go in this repo; changes to the spec + landing page + app-level configuration go in the app repo.
+This R package + the dissertation app at `github.com/joshwils-cell/joshwils-cell-dissertation` are designed to be edited together. Most users clone the app repo with `--recursive` to get both at once. Changes to thesis content + R code go in this repo; changes to the spec + landing page + app-level configuration go in the app repo.
 
 ## Framework links
 

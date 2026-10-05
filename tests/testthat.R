@@ -1,4 +1,4 @@
 library(testthat)
-library({{rPackage.name}})
+library(wilson-ai-feedback-study)
 
-test_check("{{rPackage.name}}")
+test_check("wilson-ai-feedback-study")

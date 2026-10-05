@@ -1,12 +1,12 @@
 ---
-title: "{{thesis.workingTitle}}"
-author: "{{user.name}}"
+title: "From AI Feedback to Independent Writing: Evaluating a Revision and Goal-Setting Routine in Middle School"
+author: "Joshua Wilson, Ph.D."
 ---
 
 # About this thesis
 
-This is the landing page for {{user.name}}'s dissertation, "{{thesis.workingTitle}}",
-at {{institution.name}} ({{institution.degreeProgram}}).
+This is the landing page for Joshua Wilson, Ph.D.'s dissertation, "From AI Feedback to Independent Writing: Evaluating a Revision and Goal-Setting Routine in Middle School",
+at University of Delaware (Ph.D. in Educational Psychology (already earned; this project is a research study and journal manuscript)).
 
 The thesis is rendered via Quarto + XeLaTeX to a PDF whenever you push changes
 to `ui/www/` or `R/`; a stable copy is committed to `docs/thesis.pdf` by the
